@@ -2,6 +2,9 @@
 
 This repository contains an experimental C allocation profiler for Go.
 
+**WARNING**: This is very much a work in progress. It still needs plenty of work
+to be production-ready. Use at your own peril!
+
 It's been lightly tested on Linux (Ubuntu 20.04) and macos (Big Sur).
 
 ### Building
