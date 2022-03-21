@@ -17,9 +17,10 @@ On Linux, first install libunwind, e.g.
 apt install libunwind-dev
 ```
 
-You'll also need to use the GNU linker on Linux, and will need to enable
-the linker wrapper flag for use by CGo, which is required to provide replacements
-for the allocation functions since `dlsym` uses `calloc`:
+You'll also need a linker that supports the `--wrap` argument (such as the GNU
+linker, or mold) which is required to provide replacements for the allocation
+functions since `dlsym` uses `calloc`. You will also need to explicitly allow
+this argument for use by CGo by setting the following environment variable:
 
 ```
 export CGO_LDFLAGS_ALLOW="-Wl,--wrap=.*"
@@ -27,7 +28,8 @@ export CGO_LDFLAGS_ALLOW="-Wl,--wrap=.*"
 
 ### Usage
 
-Simply import this package and use the `cmemprof.Profiler` interface to start and stop profiling:
+Import this package and use the `cmemprof.Profiler` interface to start and stop
+profiling:
 
 ```go
 package main
