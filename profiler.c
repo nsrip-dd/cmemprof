@@ -104,7 +104,7 @@ static void sample_buffer_insert(struct sample_buffer *b, void **stack, int n, s
 	}
 	memcpy(b->samples[b->writer].stack, stack, n*sizeof(void *));
 	b->samples[b->writer].count = n;
-	b->samples[b->writer].size += size;
+	b->samples[b->writer].size = size;
 	b->samples[b->writer].ready = 1;
 	b->writer = (b->writer + 1) % NSAMPLES;
 	pthread_cond_signal(&b->cond);
@@ -150,7 +150,7 @@ int cgo_heap_profiler_get_sample(void **stack, int max, size_t *size) {
 		n = max;
 	}
 	memcpy(stack, b->samples[b->reader].stack, n*sizeof(void *));
-	*size += b->samples[b->reader].size;
+	*size = b->samples[b->reader].size;
 	b->samples[b->reader].ready = 0;
 	b->reader = (b->reader + 1) % NSAMPLES;
 	pthread_mutex_unlock(&b->mu);
