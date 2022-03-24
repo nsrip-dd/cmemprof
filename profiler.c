@@ -2,6 +2,7 @@
 #include <dlfcn.h>
 #include <stdatomic.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 
 #include <pthread.h>
@@ -65,11 +66,29 @@ static inline int get_backtrace(void **stack, int max) {
 	unw_getcontext(&uc);
 	unw_init_local(&cursor, &uc);
 	int n = 0;
+	unw_word_t frame_pointer;
 	while ((unw_step(&cursor) > 0) && (n < max)) {
 		unw_word_t ip;
 		unw_get_reg(&cursor, UNW_REG_IP, &ip);
+		// TODO: get the architecture-appropriate frame pointer
+		unw_get_reg(&cursor, UNW_X86_64_RBP, &frame_pointer);
 		stack[n] = (void *)ip;
 		n++;
+	}
+	// If we reach the end of the call stack (according to libunwind) we can
+	// try to go further via frame pointer unwinding. In particular, if
+	// unwinding stops at asmcgocall, we have reached a Go function call and
+	// *should* be able to do frame pointer unwinding the rest of the way.
+	void **fp = (void *)frame_pointer;
+	while ((fp != NULL) && (n < max)) {
+		void *pc = *((void **)((void*)fp+8));
+		if (pc != NULL) {
+			stack[n++] = pc;
+		}
+		if ((void **)*fp < fp) {
+			break;
+		}
+		fp = *(fp);
 	}
 	return n;
 }
@@ -135,7 +154,7 @@ int cgo_heap_profiler_set_sampling_rate(int hz) {
 	return rate;
 }
 
-int cgo_heap_profiler_get_sample(void **stack, int max, size_t *size) {
+int cgo_heap_profiler_get_sample(uintptr_t *stack, int max, size_t *size) {
 	struct sample_buffer *b = &global_buffer;
 	pthread_mutex_lock(&b->mu);
 	while (b->samples[b->reader].ready != 1) {

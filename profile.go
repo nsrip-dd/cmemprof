@@ -12,9 +12,11 @@
 package cmemprof
 
 /*
-#cgo CFLAGS: -O3 -fno-omit-frame-pointer
+#cgo CFLAGS: -g -fno-omit-frame-pointer
 #cgo linux LDFLAGS: -pthread -lunwind -Wl,--wrap=calloc -Wl,--wrap=malloc -Wl,--wrap=realloc
 #cgo darwin LDFLAGS: -ldl -pthread
+#include <stdint.h> // for uintptr_t
+
 #include "profiler.h"
 */
 import "C"
@@ -24,7 +26,6 @@ import (
 	"io"
 	"sync"
 	"sync/atomic"
-	"unsafe"
 )
 
 const DefaultSamplingRate = 1024
@@ -43,7 +44,7 @@ type Profile struct {
 	SamplingRate int
 }
 
-func stackHash(p []unsafe.Pointer) uintptr {
+func stackHash(p []C.uintptr_t) uintptr {
 	var h uintptr
 	// hash copied from runtime/mprof.go
 	for _, pc := range p {
@@ -58,12 +59,13 @@ func stackHash(p []unsafe.Pointer) uintptr {
 }
 
 type sample struct {
-	stack []unsafe.Pointer
+	stack []C.uintptr_t
 	count int
 	size  uint
 }
 
-func cmpStacks(p, q []unsafe.Pointer) bool {
+//func cmpStacks(p []C.uintptr_t, q []uintptr) bool {
+func cmpStacks(p, q []C.uintptr_t) bool {
 	if len(p) != len(q) {
 		return false
 	}
@@ -75,9 +77,7 @@ func cmpStacks(p, q []unsafe.Pointer) bool {
 	return true
 }
 
-func (c *Profile) insert(p []unsafe.Pointer, size uint) {
-	//h := int(stackHash(p) % uintptr(len(c.samples)))
-	//bucket := c.samples[h]
+func (c *Profile) insert(p []C.uintptr_t, size uint) {
 	h := stackHash(p)
 	bucket := c.samples[h]
 	rate := c.SamplingRate
@@ -92,7 +92,7 @@ func (c *Profile) insert(p []unsafe.Pointer, size uint) {
 		}
 	}
 	// need to copy the slice in case it's re-used
-	dup := append([]unsafe.Pointer{}, p...)
+	dup := append([]C.uintptr_t{}, p...)
 	c.samples[h] = append(c.samples[h], &sample{stack: dup, count: 1, size: size})
 }
 
@@ -118,8 +118,8 @@ func (c *Profile) profile(w io.Writer) {
 	}
 	C.cgo_heap_profiler_set_sampling_rate(C.int(rate))
 	C.cgo_heap_profiler_start()
-	var s C.ulong
-	stack := make([]unsafe.Pointer, 64)
+	var s C.size_t
+	stack := make([]C.uintptr_t, 64)
 	for atomic.LoadInt64(&c.state) != 0 {
 		n := C.cgo_heap_profiler_get_sample(&stack[0], 64, &s)
 		if n == 0 {

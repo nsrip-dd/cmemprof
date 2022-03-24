@@ -2,6 +2,7 @@
 #define PROFILER_H
 
 #include <stddef.h>
+#include <stdint.h>
 
 void cgo_heap_profiler_start();
 void cgo_heap_profiler_stop();
@@ -16,6 +17,6 @@ int cgo_heap_profiler_set_sampling_rate(int hz);
 // provided pointer. Blocks until a sample is available or profiling is
 // canceled.  Returns the size of the call stack, where size 0 means profiling
 // was canceled.
-int cgo_heap_profiler_get_sample(void **stack, int max, size_t *size);
+int cgo_heap_profiler_get_sample(uintptr_t *stack, int max, size_t *size);
 
 #endif
