@@ -12,6 +12,8 @@ func buildProfile(samples map[uintptr][]*sample) *profile.Profile {
 		ID:   1,
 		File: os.Args[0], // XXX: Is there a better way to get the executable?
 	}
+	p.PeriodType = &profile.ValueType{Type: "space", Unit: "bytes"}
+	p.Period = 1
 	p.Mapping = []*profile.Mapping{m}
 	p.SampleType = []*profile.ValueType{
 		{
@@ -22,25 +24,62 @@ func buildProfile(samples map[uintptr][]*sample) *profile.Profile {
 			Type: "alloc_space",
 			Unit: "bytes",
 		},
+		// This profiler doesn't actually do heap profiling yet, but in
+		// order to view Go allocation profiles and C allocation
+		// profiles at the same time, the sample types need to be the
+		// same
+		{
+			Type: "inuse_objects",
+			Unit: "count",
+		},
+		{
+			Type: "inuse_space",
+			Unit: "bytes",
+		},
 	}
 	locations := make(map[uint64]*profile.Location)
+	var funcid uint64
 	for _, bucket := range samples {
 		if len(bucket) == 0 {
 			continue
 		}
 		for _, s := range bucket {
 			psample := &profile.Sample{
-				Value: []int64{int64(s.count), int64(s.size)},
+				Value: []int64{int64(s.count), int64(s.size), 0, 0},
 			}
 			// TODO: sample location, including address and if possilbe, line
+			// TODO: remove runtime.goexit from call stacks. This
+			// function is added to the top of every Go call stack
+			// and marks the point where a goroutine exits. The rest
+			// of the Go profiles have this frame removed from the
+			// call stack since it's not *really* part of the call
+			// stack. Removing it allows the C and Go allocations to
+			// show up side-by-side in a combined profile.
 			for _, pc := range s.stack {
-				addr := uint64(uintptr(pc))
+				addr := uint64(pc)
 				loc, ok := locations[addr]
 				if !ok {
 					loc = &profile.Location{
 						ID:      uint64(len(locations)) + 1,
 						Mapping: m,
 						Address: addr,
+					}
+					fname, line, err := lookupSymbol(addr)
+					if err == nil {
+						funcid++
+						function := &profile.Function{
+							ID:        funcid,
+							Filename:  fname,
+							StartLine: int64(line),
+						}
+						funcname, ok := populatedTable.lookupName(addr)
+						if ok {
+							function.Name = funcname
+						}
+						p.Function = append(p.Function, function)
+						loc.Line = append(loc.Line, profile.Line{
+							Function: function,
+						})
 					}
 					locations[addr] = loc
 					p.Location = append(p.Location, loc)

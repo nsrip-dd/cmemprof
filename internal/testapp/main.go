@@ -71,5 +71,8 @@ func main() {
 		}()
 	}
 	wg.Wait()
-	profiler.Stop()
+	err = profiler.Stop()
+	if err != nil {
+		panic(err)
+	}
 }
