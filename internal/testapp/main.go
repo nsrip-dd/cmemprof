@@ -5,11 +5,13 @@ import (
 	"os"
 	"sync"
 
+	_ "github.com/benesch/cgosymbolizer"
 	"github.com/nsrip-dd/cmemprof"
+	"github.com/pkg/profile"
 )
 
 /*
-#cgo CFLAGS: -O0
+#cgo CFLAGS: -g -O0
 #include <stdlib.h>
 
 int *side_effect;
@@ -38,6 +40,7 @@ int chonk(int x) {
 import "C"
 
 func main() {
+	defer profile.Start(profile.CPUProfile, profile.ProfilePath("cpu.pprof")).Stop()
 	f, err := os.Create("test.pprof")
 	if err != nil {
 		panic(err)
@@ -48,7 +51,7 @@ func main() {
 	}
 	profiler.Start(f)
 	var x int
-	for i := 0; i < 1000000; i++ {
+	for i := 0; i < 10000000; i++ {
 		switch uint(rand.Int()) % 4 {
 		case 0:
 			x = int(C.baz(C.int(x)))
@@ -65,7 +68,7 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for j := 0; j < 25000; j++ {
+			for j := 0; j < 250000; j++ {
 				C.baz(42)
 			}
 		}()
