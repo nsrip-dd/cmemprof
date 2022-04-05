@@ -93,6 +93,13 @@ static inline int get_backtrace(void **stack, int max) {
 	return n;
 }
 
+extern int goCallers(uintptr_t *pcs, int max);
+
+static inline int go_backtrace(void **stack, int max) {
+	uintptr_t *stack_head = (void *) &stack[0];
+	return goCallers(stack_head, max);
+}
+
 void profile_allocation(size_t size) {
 	// TODO: more sophisticated sampling?
 	size_t rate = atomic_load_explicit(&sampling_rate, memory_order_relaxed);
@@ -103,11 +110,11 @@ void profile_allocation(size_t size) {
 	if (old % rate == 0) {
 		void *stack[64];
 		//int n = unw_backtrace(stack, 64);
-		int n = get_backtrace(stack, 64);
+		//int n = get_backtrace(stack, 64);
+		int n = go_backtrace(stack, 64);
 		// TODO: read the backtrace directly into the buffer, eliminate
 		// one extra copy?
 		// TODO: skip this function in the stack trace?
-		// TODO: Cross the cgo boundary?
 		sample_buffer_insert(&global_buffer, stack, n, size);
 	}
 }
