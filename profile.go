@@ -13,7 +13,7 @@ package cmemprof
 
 /*
 #cgo CFLAGS: -g -fno-omit-frame-pointer
-#cgo linux LDFLAGS: -pthread -lunwind -Wl,--wrap=calloc -Wl,--wrap=malloc -Wl,--wrap=realloc
+#cgo linux LDFLAGS: -pthread -Wl,--wrap=calloc -Wl,--wrap=malloc -Wl,--wrap=realloc
 #cgo darwin LDFLAGS: -ldl -pthread
 #include <stdint.h> // for uintptr_t
 

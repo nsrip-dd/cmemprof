@@ -1,13 +1,9 @@
-#define _GNU_SOURCE
-#include <dlfcn.h>
 #include <stdatomic.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 
 #include <pthread.h>
-#define UNW_LOCAL_ONLY
-#include <libunwind.h>
 
 #include "profiler.h"
 
@@ -57,42 +53,6 @@ static void sample_buffer_insert(struct sample_buffer *b, void **stack, int n, s
 // calls tracks how many times malloc has been called
 atomic_size_t calls;
 
-// This is a really basic implementation of unw_backtrace. libunwind actually
-// has faster arch-specific implementations of this function, but not every
-// libunwind has the unw_backtrace function.
-static inline int get_backtrace(void **stack, int max) {
-	unw_cursor_t cursor;
-	unw_context_t uc;
-	unw_getcontext(&uc);
-	unw_init_local(&cursor, &uc);
-	int n = 0;
-	unw_word_t frame_pointer;
-	while ((unw_step(&cursor) > 0) && (n < max)) {
-		unw_word_t ip;
-		unw_get_reg(&cursor, UNW_REG_IP, &ip);
-		// TODO: get the architecture-appropriate frame pointer
-		unw_get_reg(&cursor, UNW_X86_64_RBP, &frame_pointer);
-		stack[n] = (void *)ip;
-		n++;
-	}
-	// If we reach the end of the call stack (according to libunwind) we can
-	// try to go further via frame pointer unwinding. In particular, if
-	// unwinding stops at asmcgocall, we have reached a Go function call and
-	// *should* be able to do frame pointer unwinding the rest of the way.
-	void **fp = (void *)frame_pointer;
-	while ((fp != NULL) && (n < max)) {
-		void *pc = *((void **)((void*)fp+8));
-		if (pc != NULL) {
-			stack[n++] = pc;
-		}
-		if ((void **)*fp < fp) {
-			break;
-		}
-		fp = *(fp);
-	}
-	return n;
-}
-
 extern int goCallers(uintptr_t *pcs, int max);
 
 static inline int go_backtrace(void **stack, int max) {
@@ -109,8 +69,6 @@ void profile_allocation(size_t size) {
 	size_t old = atomic_fetch_add_explicit(&calls, 1, memory_order_relaxed);
 	if (old % rate == 0) {
 		void *stack[64];
-		//int n = unw_backtrace(stack, 64);
-		//int n = get_backtrace(stack, 64);
 		int n = go_backtrace(stack, 64);
 		// TODO: read the backtrace directly into the buffer, eliminate
 		// one extra copy?

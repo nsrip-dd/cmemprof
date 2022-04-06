@@ -11,13 +11,7 @@ It's been lightly tested on Linux (Ubuntu 20.04) and macos (Big Sur).
 
 On macos, you don't need to do anything special.
 
-On Linux, first install libunwind, e.g.
-
-```
-apt install libunwind-dev
-```
-
-You'll also need a linker that supports the `--wrap` argument (such as the GNU
+On Linux, you'll need a linker that supports the `--wrap` argument (such as the GNU
 linker, or mold) which is required to provide replacements for the allocation
 functions since `dlsym` uses `calloc`. You will also need to explicitly allow
 this argument for use by CGo by setting the following environment variable:
@@ -52,6 +46,4 @@ func main() {
 
 ### Limitations
 
-* The current stack unwinding can't cross the C-Go boundary so call stacks stop at the point where they enter Go.
-* This library doesn't do symbolization for profiles yet. If you have access to both the binary and a profile, `go tool pprof` can symbolize for you.
 * It's not optimized so there is noticeable overhead when the profiler is enabled.
