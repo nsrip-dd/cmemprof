@@ -44,6 +44,10 @@ func main() {
 }
 ```
 
+You will also need to import a cgo symbolizer such as
+`github.com/benesch/cgosymbolizer` somewhere in your program to see the C
+portion of call stacks in the profiles.
+
 ### Limitations
 
 * It's not optimized so there is noticeable overhead when the profiler is enabled.
