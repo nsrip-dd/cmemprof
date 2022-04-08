@@ -60,7 +60,15 @@ static inline int go_backtrace(void **stack, int max) {
 	return goCallers(stack_head, max);
 }
 
+extern __thread atomic_int in_cgo_start;
+
 void profile_allocation(size_t size) {
+	// When starting a thread in CGo mode, malloc is called. Long story short,
+	// calling back into Go in that situtation crashes the program. So don't
+	// profile in that case.
+	if (atomic_load(&in_cgo_start) == 1) {
+		return;
+	}
 	// TODO: more sophisticated sampling?
 	size_t rate = atomic_load_explicit(&sampling_rate, memory_order_relaxed);
 	if (rate == 0) {
