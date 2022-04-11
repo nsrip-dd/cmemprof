@@ -28,7 +28,7 @@ import (
 	"sync/atomic"
 )
 
-const DefaultSamplingRate = 1024
+const DefaultSamplingRate = 1024 * 1024 // 1 MB
 
 // Profile provides access to a C memory allocation profiler based on
 // instrumenting malloc, calloc, and realloc.
@@ -38,9 +38,10 @@ type Profile struct {
 	mu      sync.Mutex
 	samples map[uintptr][]*sample
 
-	// SamplingRate is the portion of memory allocations which should be
-	// recorded. On average, 1 / SamplingRate allocations will be
-	// sampled.
+	// SamplingRate is the value, in bytes, such that an average of one
+	// sample will be recorded for every SamplingRate bytes allocated.  An
+	// allocation of N bytes will be recorded with probability min(1, N /
+	// SamplingRate).
 	SamplingRate int
 }
 
@@ -86,8 +87,20 @@ func (c *Profile) insert(p []C.uintptr_t, size uint) {
 	}
 	for _, sample := range bucket {
 		if cmpStacks(p, sample.stack) {
-			sample.count += rate
-			sample.size += size * uint(rate)
+			// Adjust recorded samples according to their likelihood
+			// of being observed so that our profile more accurately
+			// represents the true amount of allocation
+			if size < uint(rate) {
+				// The allocation was sample with probability p
+				// = size / rate.  So we assume there were
+				// actually (1 / p) similar allocations for a
+				// total size of (1 / p) * size = rate
+				sample.count += int(float64(rate) / float64(size))
+				sample.size += uint(rate)
+			} else {
+				sample.count += 1
+				sample.size += size
+			}
 			return
 		}
 	}

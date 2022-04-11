@@ -1,6 +1,7 @@
 #include <stdatomic.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <pthread.h>
@@ -62,6 +63,33 @@ static inline int go_backtrace(void **stack, int max) {
 
 extern __thread atomic_int in_cgo_start;
 
+__thread uint64_t rng_state;
+
+static uint64_t rng_state_advance(uint64_t seed) {
+	while (seed == 0) {
+		uint64_t lo = rand();
+		uint64_t hi = rand();
+		seed = (hi << 32) | lo;
+	}
+	uint64_t x = seed;
+	x ^= x << 13;
+	x ^= x >> 17;
+	x ^= x << 5;
+	return x;
+}
+
+static int should_sample(size_t rate, size_t size) {
+	if (rate == 1) {
+		return 1;
+	}
+	if (size > rate) {
+		return 1;
+	}
+	rng_state = rng_state_advance(rng_state);
+	uint64_t check = rng_state % rate;
+	return check <= size;
+}
+
 void profile_allocation(size_t size) {
 	// When starting a thread in CGo mode, malloc is called. Long story short,
 	// calling back into Go in that situtation crashes the program. So don't
@@ -74,8 +102,7 @@ void profile_allocation(size_t size) {
 	if (rate == 0) {
 		return;
 	}
-	size_t old = atomic_fetch_add_explicit(&calls, 1, memory_order_relaxed);
-	if (old % rate == 0) {
+	if (should_sample(rate, size) != 0) {
 		void *stack[64];
 		int n = go_backtrace(stack, 64);
 		// TODO: read the backtrace directly into the buffer, eliminate
