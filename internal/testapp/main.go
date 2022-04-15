@@ -5,8 +5,8 @@ import (
 	"os"
 	"sync"
 
-	_ "github.com/benesch/cgosymbolizer"
 	"github.com/nsrip-dd/cmemprof"
+	_ "github.com/nsrip-dd/cmemprof/internal/cgosymbolizer"
 	"github.com/pkg/profile"
 )
 
@@ -47,11 +47,11 @@ func main() {
 	}
 	defer f.Close()
 	profiler := &cmemprof.Profile{
-		SamplingRate: 512,
+		SamplingRate: 1,
 	}
 	profiler.Start(f)
 	var x int
-	for i := 0; i < 10000000; i++ {
+	for i := 0; i < 100000; i++ {
 		switch uint(rand.Int()) % 4 {
 		case 0:
 			x = int(C.baz(C.int(x)))
