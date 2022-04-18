@@ -28,12 +28,3 @@ void *__wrap_realloc(void *p, size_t size) {
 	profile_allocation(size);
 	return __real_realloc(p, size);
 }
-
-extern __thread atomic_int in_cgo_start;
-
-__attribute__((weak)) extern void __real_x_cgo_thread_start(void *p);
-void __wrap_x_cgo_thread_start(void *p) {
-        atomic_store(&in_cgo_start, 1);
-        __real_x_cgo_thread_start(p);
-        atomic_store(&in_cgo_start, 0);
-}
