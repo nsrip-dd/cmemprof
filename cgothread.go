@@ -14,10 +14,10 @@ package cmemprof
 //	  access a null pointer (the address of the "current" G) and crash.
 //
 // Fortunately, the cgo thread creation function is a variable that we can
-// manipulate (declared in runtime/cgo/cgocallbacks.go). So we use the
-// go:linkname directive to create our own reference to the unexported variable
-// and override it with our own wrapper function that sets a flag indicating
-// that we are in thread creation and should not profile.
+// manipulate (declared in runtime/cgo/callbacks.go). So we use the go:linkname
+// directive to create our own reference to the unexported variable and override
+// it with our own wrapper function that sets a flag indicating that we are in
+// thread creation and should not profile.
 
 /*
 extern void cmemprof_set_cgo_thread_start(void *);
