@@ -9,6 +9,9 @@
 void *(*real_malloc)(size_t);
 void *(*real_calloc)(size_t, size_t);
 void *(*real_realloc)(void *, size_t);
+void *(*real_valloc)(size_t);
+void *(*real_aligned_alloc)(size_t, size_t);
+int (*real_posix_memalign)(void **, size_t, size_t);
 
 pthread_once_t alloc_funcs_init_once;
 static void alloc_funcs_init(void) {
@@ -24,6 +27,18 @@ static void alloc_funcs_init(void) {
 	f = dlsym(RTLD_NEXT, "realloc");
 	if (f != NULL) {
 		real_realloc = f;
+	}
+	f = dlsym(RTLD_NEXT, "valloc");
+	if (f != NULL) {
+		real_valloc = f;
+	}
+	f = dlsym(RTLD_NEXT, "aligned_alloc");
+	if (f != NULL) {
+		real_aligned_alloc = f;
+	}
+	f = dlsym(RTLD_NEXT, "posix_memalign");
+	if (f != NULL) {
+		real_posix_memalign = f;
 	}
 }
 
@@ -49,4 +64,19 @@ void *realloc(void *p, size_t size) {
 	pthread_once(&alloc_funcs_init_once, alloc_funcs_init);
 	profile_allocation(size);
 	return real_realloc(p, size);
+}
+
+void *valloc(size_t size) {
+	profile_allocation(size);
+	return real_valloc(size);
+}
+
+void *aligned_alloc(size_t alignment, size_t size) {
+	profile_allocation(size);
+	return real_aligned_alloc(alignment, size);
+}
+
+int posix_memalign(void **p, size_t alignment, size_t size) {
+	profile_allocation(size);
+	return real_posix_memalign(p, alignment, size);
 }

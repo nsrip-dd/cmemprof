@@ -28,3 +28,21 @@ void *__wrap_realloc(void *p, size_t size) {
 	profile_allocation(size);
 	return __real_realloc(p, size);
 }
+
+void *__real_valloc(size_t size);
+void *__wrap_valloc(size_t size) {
+	profile_allocation(size);
+	return __real_valloc(size);
+}
+
+void *__real_aligned_alloc(size_t alignment, size_t size);
+void *__wrap_aligned_alloc(size_t alignment, size_t size) {
+	profile_allocation(size);
+	return __real_aligned_alloc(alignment, size);
+}
+
+int __real_posix_memalign(void **p, size_t alignment, size_t size);
+int __wrap_posix_memalign(void **p, size_t alignment, size_t size) {
+	profile_allocation(size);
+	return __real_posix_memalign(p, alignment, size);
+}
