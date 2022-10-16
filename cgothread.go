@@ -1,3 +1,8 @@
+// Unless explicitly stated otherwise all files in this repository are licensed
+// under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2022 Datadog, Inc.
+
 package cmemprof
 
 // We do the following Go linker trickery to work around the following issue:
@@ -8,7 +13,8 @@ package cmemprof
 //	  current goroutine g0 (in thread local storage) has a real G to
 //	  run the Go code.
 //	* The x_cgo_thread_start function, used in cgo programs to create OS
-//	  threads as part of initializing a new M, calls malloc.
+//	  threads as part of initializing a new M, calls malloc. pthread
+//	  internal functions might also call malloc.
 //	* If we happen to profile this call to malloc, the newly created M
 //	  has no G to run the Go code. This causes runtime.cgocallback to
 //	  access a null pointer (the address of the "current" G) and crash.

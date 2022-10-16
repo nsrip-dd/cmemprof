@@ -1,3 +1,8 @@
+// Unless explicitly stated otherwise all files in this repository are licensed
+// under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2022 Datadog, Inc.
+
 #include <dlfcn.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -45,7 +50,8 @@ static void alloc_funcs_init(void) {
 
 void *malloc(size_t size) {
 	pthread_once(&alloc_funcs_init_once, alloc_funcs_init);
-	profile_allocation(size);
+	void *ret_addr = __builtin_return_address(0);
+	profile_allocation_checked(size, ret_addr);
 	return real_malloc(size);
 }
 
@@ -67,16 +73,19 @@ void *realloc(void *p, size_t size) {
 }
 
 void *valloc(size_t size) {
+	pthread_once(&alloc_funcs_init_once, alloc_funcs_init);
 	profile_allocation(size);
 	return real_valloc(size);
 }
 
 void *aligned_alloc(size_t alignment, size_t size) {
+	pthread_once(&alloc_funcs_init_once, alloc_funcs_init);
 	profile_allocation(size);
 	return real_aligned_alloc(alignment, size);
 }
 
 int posix_memalign(void **p, size_t alignment, size_t size) {
+	pthread_once(&alloc_funcs_init_once, alloc_funcs_init);
 	profile_allocation(size);
 	return real_posix_memalign(p, alignment, size);
 }
