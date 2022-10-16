@@ -40,6 +40,23 @@ package cmemprof
 #include <stdint.h> // for uintptr_t
 
 #include "profiler.h"
+
+extern void *malloc(size_t);
+
+// safety_malloc_wrapper is a pass-through to malloc. We want
+// Go to generate a wrapper to this function, and replace Go's
+// malloc wrapper with our wrapper.
+//
+// Go's wrapper has two additional properties:
+//	* malloc(0) will return something (handled by us)
+//	* panics on NULL return (handled by Go)
+void *safety_malloc_wrapper(size_t size) {
+	void *rv = malloc(size);
+	if ((rv == NULL) && (size == 0)) {
+		rv = malloc(1);
+	}
+	return rv;
+}
 */
 import "C"
 
@@ -50,6 +67,12 @@ import (
 
 	"github.com/google/pprof/profile"
 )
+
+// This is just here to make sure that Go actually generates the appropriate C
+// bindings for safety_malloc_wrapper
+func safety() {
+	C.safety_malloc_wrapper(0)
+}
 
 // callStack is a sequence of program counters representing a call to malloc,
 // calloc, etc. callStack is 0-terminated.
