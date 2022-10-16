@@ -37,8 +37,8 @@ import (
 )
 
 func main() {
-        profiler := cmemprof.Profile{SampleRate: 500}
-        profiler.Start()
+        var profiler cmemprof.Profile
+        profiler.Start(512*1024)
         defer func() {
 		f, _ := os.Create("cmem.pprof")
 		defer f.Close()
